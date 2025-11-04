@@ -1,5 +1,6 @@
 package com.mytoyappbe.controller;
 
+import com.mytoyappbe.dto.KafkaNotificationMessageDto;
 import com.mytoyappbe.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,8 +16,8 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @PostMapping
-    public String sendNotification(@RequestBody String message) {
-        notificationService.sendNotification(message);
+    public String sendNotification(@RequestBody KafkaNotificationMessageDto messageDto) {
+        notificationService.sendNotification(messageDto);
         return "Notification sent successfully!";
     }
 }

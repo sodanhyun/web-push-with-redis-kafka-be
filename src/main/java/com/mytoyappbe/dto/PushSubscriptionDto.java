@@ -11,6 +11,10 @@ public class PushSubscriptionDto {
 
     @Getter
     @Setter
+    private String userId;
+
+    @Getter
+    @Setter
     private Keys keys;
 
     @Getter

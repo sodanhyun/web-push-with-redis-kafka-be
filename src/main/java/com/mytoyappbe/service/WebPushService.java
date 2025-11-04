@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 @Slf4j
@@ -24,7 +23,7 @@ import java.util.concurrent.ExecutionException;
 @RequiredArgsConstructor
 public class WebPushService {
 
-    private static final String REDIS_SUBSCRIPTION_SET_KEY = "web-push-subscriptions";
+    private static final String REDIS_SUBSCRIPTION_HASH_KEY = "web-push-subscriptions-by-user";
 
     private final RedisTemplate<String, String> redisTemplate;
     private final PushService pushService;
@@ -33,42 +32,40 @@ public class WebPushService {
     public void saveSubscription(PushSubscriptionDto subscriptionDto) {
         try {
             String subscriptionJson = objectMapper.writeValueAsString(subscriptionDto);
-            redisTemplate.opsForSet().add(REDIS_SUBSCRIPTION_SET_KEY, subscriptionJson);
-            log.info("Subscription saved: {}", subscriptionJson);
+            redisTemplate.opsForHash().put(REDIS_SUBSCRIPTION_HASH_KEY, subscriptionDto.getUserId(), subscriptionJson);
+            log.info("Subscription saved for user {}: {}", subscriptionDto.getUserId(), subscriptionJson);
         } catch (JsonProcessingException e) {
-            log.error("Error saving subscription", e);
+            log.error("Error saving subscription for user {}", subscriptionDto.getUserId(), e);
         }
     }
 
-    public void sendNotificationToAll(String message) {
-        Set<String> subscriptionJsons = redisTemplate.opsForSet().members(REDIS_SUBSCRIPTION_SET_KEY);
-        if (subscriptionJsons == null || subscriptionJsons.isEmpty()) {
-            log.info("No subscriptions to send notifications to.");
+    public void sendNotificationToUser(String userId, String message) {
+        String subscriptionJson = (String) redisTemplate.opsForHash().get(REDIS_SUBSCRIPTION_HASH_KEY, userId);
+        if (subscriptionJson == null) {
+            log.info("No subscription found for user {}", userId);
             return;
         }
 
-        for (String subscriptionJson : subscriptionJsons) {
-            try {
-                PushSubscriptionDto subDto = objectMapper.readValue(subscriptionJson, PushSubscriptionDto.class);
-                Subscription subscription = new Subscription(subDto.getEndpoint(), new Subscription.Keys(subDto.getKeys().getP256dh(), subDto.getKeys().getAuth()));
+        try {
+            PushSubscriptionDto subDto = objectMapper.readValue(subscriptionJson, PushSubscriptionDto.class);
+            Subscription subscription = new Subscription(subDto.getEndpoint(), new Subscription.Keys(subDto.getKeys().getP256dh(), subDto.getKeys().getAuth()));
 
-                Notification notification = new Notification(subscription, message);
-                HttpResponse response = pushService.send(notification);
-                int statusCode = response.getStatusLine().getStatusCode();
+            Notification notification = new Notification(subscription, message);
+            HttpResponse response = pushService.send(notification);
+            int statusCode = response.getStatusLine().getStatusCode();
 
-                if (statusCode == 410) { // GONE: Subscription is no longer valid
-                    log.info("Subscription expired or invalid. Removing: {}", subscriptionJson);
-                    redisTemplate.opsForSet().remove(REDIS_SUBSCRIPTION_SET_KEY, subscriptionJson);
-                } else if (statusCode != 201) { // 201 CREATED is success
-                    String responseBody = EntityUtils.toString(response.getEntity());
-                    log.warn("Failed to send push notification to {}. Status: {}, Response: {}", subDto.getEndpoint(), statusCode, responseBody);
-                }
-
-            } catch (JsonProcessingException e) {
-                log.error("Error deserializing subscription: {}", subscriptionJson, e);
-            } catch (GeneralSecurityException | IOException | JoseException | ExecutionException | InterruptedException e) {
-                log.error("Error sending push notification for subscription: {}", subscriptionJson, e);
+            if (statusCode == 410) { // GONE: Subscription is no longer valid
+                log.info("Subscription for user {} expired or invalid. Removing.", userId);
+                redisTemplate.opsForHash().delete(REDIS_SUBSCRIPTION_HASH_KEY, userId);
+            } else if (statusCode != 201) { // 201 CREATED is success
+                String responseBody = EntityUtils.toString(response.getEntity());
+                log.warn("Failed to send push notification to user {}. Status: {}, Response: {}", userId, statusCode, responseBody);
             }
+
+        } catch (JsonProcessingException e) {
+            log.error("Error deserializing subscription for user {}", userId, e);
+        } catch (GeneralSecurityException | IOException | JoseException | ExecutionException | InterruptedException e) {
+            log.error("Error sending push notification for user {}", userId, e);
         }
     }
 }
