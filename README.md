@@ -183,17 +183,18 @@ spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
 
 *   **실시간 크롤링 알림 흐름 (WebSocket + Redis Pub/Sub)**:
     1.  **연결 수립**: 프론트엔드가 백엔드 인스턴스 중 하나와 `/ws/test/{userId}`로 WebSocket 연결을 맺습니다.
-    2.  **세션 등록**: `TestWebSocketHandler`가 연결을 처리합니다.
+    2.  **세션 등록**: `WebSocketConnectionHandler`가 연결을 처리합니다.
         *   해당 인스턴스의 `WebSocketSessionManager`에 세션을 **로컬**로 저장합니다.
         *   전체 연결 사용자 추적을 위해 **Redis**의 `ws:users` Set에 `userId`를 추가합니다.
     3.  **크롤링 시작**: 프론트엔드가 `/api/crawling/start/{userId}`를 호출합니다.
     4.  **세션 확인 및 발행**: `CrawlingService`는 다음을 수행합니다.
         *   Redis의 `ws:users` Set을 통해 `userId`가 활성 세션을 가지고 있는지 확인합니다.
-        *   크롤링 작업을 비동기로 시작하고, 진행 상황 메시지를 `RedisMessagePublisher`를 통해 `ws:user:{userId}` 채널로 **발행(Publish)**합니다.
+        *   크롤링 작업을 비동기로 시작하고, 진행 상황 메시지를 `RedisMessagePublisher`를 통해 `ws:crawling:{userId}` 채널로 **발행(Publish)**합니다.
     5.  **메시지 수신 및 전송**:
-        *   `RedisMessageSubscriber`가 `ws:user:*` 패턴의 채널을 **구독(Subscribe)**하고 있다가 메시지를 수신합니다.
-        *   메시지를 수신한 모든 인스턴스 중, 실제 사용자의 WebSocket 연결을 가진 인스턴스의 `RedisMessageSubscriber`가 `WebSocketSessionManager`를 통해 해당 **로컬 세션**으로 메시지를 전송합니다.
-    6.  **연결 종료**: 연결이 끊어지면 `TestWebSocketHandler`는 로컬 세션을 제거하고 Redis의 `ws:users` Set에서도 `userId`를 제거합니다.
+        *   `RedisMessageSubscriber`가 `ws:user:*` 및 `ws:crawling:*` 패턴의 채널을 **구독(Subscribe)**하고 있다가 메시지를 수신합니다.
+        *   `MessageHandlerFactory`를 통해 `CrawlingProgressMessageHandler`와 같은 적절한 핸들러를 찾아 메시지를 처리합니다.
+        *   `CrawlingProgressMessageHandler`는 수신된 크롤링 진행 메시지를 `WebSocketSessionManager`를 통해 해당 **로컬 세션**으로 전송합니다.
+    6.  **연결 종료**: 연결이 끊어지면 `WebSocketConnectionHandler`는 로컬 세션을 제거하고 Redis의 `ws:users` Set에서도 `userId`를 제거합니다.
 
 *   **크롤링 스케줄링 흐름 (Spring Batch + MySQL + 동적 스케줄러)**:
     1.  **스케줄 등록/관리**: 프론트엔드에서 새로운 크롤링 스케줄(사용자 ID, Cron 표현식)을 백엔드의 `/api/schedules/crawling` 엔드포인트로 전송합니다.
@@ -207,7 +208,7 @@ spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
 
 ### `com.mytoyappbe.config` 패키지
 
-*   `RedisConfig.java`: Redis 연결과 `RedisTemplate`을 구성합니다. 또한, **`RedisMessageListenerContainer`**를 설정하여 `RedisMessageSubscriber`를 특정 Redis 채널 패턴(`ws:user:*`)의 리스너로 등록합니다.
+*   `RedisConfig.java`: Redis 연결과 `RedisTemplate`을 구성합니다. 또한, **`RedisMessageListenerContainer`**를 설정하여 `RedisMessageSubscriber`를 특정 Redis 채널 패턴(`ws:user:*`, `ws:crawling:*`)의 리스너로 등록합니다.
 *   `WebSocketConfig.java`: `/ws/test/{userId}` 경로에 `TestWebSocketHandler`를 등록하여 WebSocket 엔드포인트를 활성화합니다.
 
 ### `com.mytoyappbe.entity` 패키지
@@ -226,9 +227,12 @@ spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
 
 *   `DynamicScheduler.java`: {@link ThreadPoolTaskScheduler}를 사용하여 Cron 표현식에 따라 Spring Batch 작업을 동적으로 스케줄링, 실행, 취소하는 핵심 컴포넌트입니다.
 
-### `com.mytoyappbe.handler` 패키지
+### `com.mytoyappbe.websocket.handler` 패키지
 
-*   `TestWebSocketHandler.java`: WebSocket 연결, 메시지, 종료 이벤트를 처리합니다. 연결이 수립되면 로컬 세션을 `WebSocketSessionManager`에 추가하고, 분산 환경에서 사용자 연결 상태를 관리하기 위해 **Redis Set에 `userId`를 추가**합니다.
+*   `WebSocketConnectionHandler.java`: WebSocket 연결, 메시지, 종료 이벤트를 처리합니다. 연결이 수립되면 로컬 세션을 `WebSocketSessionManager`에 추가하고, 분산 환경에서 사용자 연결 상태를 관리하기 위해 **Redis Set에 `userId`를 추가**합니다.
+*   `MessageHandler.java`: Redis Pub/Sub 메시지를 처리하기 위한 인터페이스입니다.
+*   `MessageHandlerFactory.java`: `MessageHandler` 구현체들을 관리하고, 채널에 따라 적절한 핸들러를 반환합니다.
+*   `CrawlingProgressMessageHandler.java`: `ws:crawling:*` 채널에서 수신된 크롤링 진행 메시지를 처리하고, 해당 사용자에게 WebSocket을 통해 전달합니다.
 
 ### `com.mytoyappbe.manager` 패키지
 

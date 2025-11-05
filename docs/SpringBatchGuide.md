@@ -22,12 +22,12 @@ Spring Batch는 다음과 같은 핵심 개념들을 기반으로 동작합니�
 
 ## 3. 프로젝트 내 Spring Batch 구성
 
-### `com.mytoyappbe.config.BatchConfig.java`
+### `com.mytoyappbe.schedule.config.BatchConfig.java`
 
 *   **역할**: Spring Batch의 메타데이터 테이블을 데이터베이스에 자동으로 생성하도록 설정합니다.
 *   **주요 내용**: `@EnableBatchProcessing` 어노테이션을 통해 Spring Batch 기능을 활성화하고, `batchDataSourceInitializer` 빈을 정의하여 `schema-mysql.sql` 스크립트를 실행합니다. 이 스크립트는 `BATCH_JOB_INSTANCE`, `BATCH_STEP_EXECUTION` 등 Spring Batch 운영에 필요한 테이블들을 생성합니다.
 
-### `com.mytoyappbe.batch.CrawlingJobConfig.java`
+### `com.mytoyappbe.config.batch.CrawlingJobConfig.java`
 
 *   **역할**: 실제 크롤링 작업을 위한 Spring Batch {@link Job}과 {@link Step}을 정의합니다.
 *   **주요 내용**:
@@ -35,7 +35,7 @@ Spring Batch는 다음과 같은 핵심 개념들을 기반으로 동작합니�
     *   `crawlingStep()`: `crawlingTasklet`을 실행하는 단일 {@link Step}을 정의합니다.
     *   `crawlingJob()`: `crawlingStep`을 포함하는 {@link Job}을 정의합니다. `RunIdIncrementer`를 사용하여 Job 실행 시마다 고유한 JobInstance ID를 부여하며, {@link CrawlingJobCompletionNotificationListener}를 등록하여 Job 완료/실패 시 알림을 처리합니다.
 
-### `com.mytoyappbe.scheduler.DynamicScheduler.java`
+### `com.mytoyappbe.batch.DynamicScheduler.java`
 
 *   **역할**: Cron 표현식에 따라 Spring Batch Job을 동적으로 스케줄링하고 실행을 관리하는 핵심 컴포넌트입니다.
 *   **주요 내용**:

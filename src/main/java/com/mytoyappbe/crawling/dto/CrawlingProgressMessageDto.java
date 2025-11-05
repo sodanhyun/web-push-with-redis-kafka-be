@@ -1,0 +1,14 @@
+package com.mytoyappbe.crawling.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class CrawlingProgressMessageDto {
+    private String title;
+    private String content;
+    private String status; // e.g., "in_progress", "complete"
+}
