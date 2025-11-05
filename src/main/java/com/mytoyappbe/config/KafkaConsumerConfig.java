@@ -13,57 +13,79 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * @class KafkaConsumerConfig
- * @description Kafka 메시지 소비자를 설정하는 Spring 설정 클래스입니다.
- *              이 클래스는 Kafka 브로커에 연결하고 메시지를 소비하는 데 필요한
- *              `ConsumerFactory`와 `ConcurrentKafkaListenerContainerFactory` 빈을 정의합니다.
- *
- * `@Configuration` 어노테이션은 이 클래스가 Spring의 설정 클래스임을 나타내며,
- * `@Bean` 어노테이션이 붙은 메서드들이 Spring 컨테이너에 의해 관리되는 빈을 생성함을 의미합니다.
+ * Kafka 메시지 소비(Consumer) 관련 설정을 담당하는 Spring 설정 클래스입니다.
+ * <p>
+ * 이 클래스는 Kafka 브로커로부터 메시지를 수신하는 데 필요한 {@link ConsumerFactory}와
+ * {@code @KafkaListener} 어노테이션을 처리하는 {@link ConcurrentKafkaListenerContainerFactory} 빈을 정의합니다.
  */
 @Configuration
 public class KafkaConsumerConfig {
 
-    // application.properties에서 Kafka 브로커 서버 주소를 주입받습니다.
+    /**
+     * Kafka 브로커의 주소 목록. `application.properties`에서 `spring.kafka.bootstrap-servers` 값으로 주입받습니다.
+     */
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
-    // application.properties에서 Kafka 소비자 그룹 ID를 주입받습니다.
+    /**
+     * Kafka 컨슈머 그룹 ID. `application.properties`에서 `spring.kafka.consumer.group-id` 값으로 주입받습니다.
+     */
     @Value("${spring.kafka.consumer.group-id}")
     private String groupId;
 
     /**
-     * @method consumerFactory
-     * @description Kafka 메시지 소비자를 생성하는 팩토리 빈을 정의합니다.
-     *              이 팩토리는 Kafka 브로커 연결 정보, 그룹 ID, 메시지 역직렬화 방식을 설정합니다.
-     * @return `ConsumerFactory<String, String>` - Kafka 메시지 소비자를 생성하는 팩토리
+     * Kafka 컨슈머 인스턴스를 생성하기 위한 {@link ConsumerFactory} 빈을 정의합니다.
+     * 이 팩토리는 컨슈머가 Kafka 브로커에 연결하고 메시지를 수신하는 데 필요한 기본 속성들을 설정합니다.
+     *
+     * @return Kafka 컨슈머 생성을 위한 {@link ConsumerFactory} 객체
      */
     @Bean
     public ConsumerFactory<String, String> consumerFactory() {
         Map<String, Object> props = new HashMap<>();
-        // Kafka 브로커 서버 주소를 설정합니다.
+
+        // BOOTSTRAP_SERVERS_CONFIG: 컨슈머가 처음 연결할 Kafka 브로커의 호스트와 포트 목록입니다.
+        // 이 목록을 통해 클러스터의 모든 브로커 정보를 자동으로 발견합니다.
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        // 소비자가 속할 그룹 ID를 설정합니다.
+
+        // GROUP_ID_CONFIG: 컨슈머가 속한 그룹의 ID입니다.
+        // 동일한 그룹 ID를 가진 컨슈머들은 하나의 토픽의 다른 파티션들을 나누어 처리함으로써 메시지 처리의 병렬성을 높입니다.
+        // 한 메시지는 그룹 내 하나의 컨슈머에 의해서만 소비됩니다.
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        // 메시지 키를 역직렬화할 클래스를 설정합니다. 여기서는 StringDeserializer를 사용합니다.
+
+        // KEY_DESERIALIZER_CLASS_CONFIG: 메시지 키를 역직렬화(byte[] -> Object)하는 클래스입니다.
+        // 프로듀서에서 사용한 직렬화 클래스(KEY_SERIALIZER_CLASS_CONFIG)와 일치해야 합니다.
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        // 메시지 값을 역직렬화할 클래스를 설정합니다. 여기서는 StringDeserializer를 사용합니다.
+
+        // VALUE_DESERIALIZER_CLASS_CONFIG: 메시지 값을 역직렬화하는 클래스입니다.
+        // 프로듀서에서 사용한 직렬화 클래스(VALUE_SERIALIZER_CLASS_CONFIG)와 일치해야 합니다.
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
+        // AUTO_OFFSET_RESET_CONFIG: 컨슈머가 처음 시작하거나 기존 오프셋을 찾을 수 없을 때 어디서부터 메시지를 읽을지 결정합니다.
+        // - "earliest": 가장 오래된 메시지부터 읽기 시작합니다.
+        // - "latest": 가장 최근(새로운) 메시지부터 읽기 시작합니다. (기본값)
+        // - "none": 오프셋을 찾지 못하면 예외를 발생시킵니다.
+        // 이 설정은 보통 application.properties (`spring.kafka.consumer.auto-offset-reset`)에서 관리하는 것이 일반적입니다.
+        // props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
     /**
-     * @method kafkaListenerContainerFactory
-     * @description Kafka 리스너 컨테이너 팩토리 빈을 정의합니다.
-     *              이 팩토리는 `@KafkaListener` 어노테이션이 붙은 메서드들을 처리하는 데 사용됩니다.
-     *              `consumerFactory`를 사용하여 Kafka 소비자를 생성하고 관리합니다.
-     * @return `ConcurrentKafkaListenerContainerFactory<String, String>` - Kafka 리스너 컨테이너 팩토리
+     * {@code @KafkaListener} 어노테이션이 붙은 메서드를 위한 리스너 컨테이너 팩토리를 생성하는 빈입니다.
+     * 이 팩토리는 동시성(concurrency) 제어 등 리스너의 동작 방식을 설정합니다.
+     *
+     * @return {@link ConcurrentKafkaListenerContainerFactory} 객체
      */
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        // 위에서 정의한 consumerFactory를 설정하여 Kafka 소비자를 생성하도록 합니다.
+        // 위에서 정의한 consumerFactory()를 사용하여 컨슈머 인스턴스를 생성하도록 설정합니다.
         factory.setConsumerFactory(consumerFactory());
+
+        // factory.setConcurrency(3): 리스너의 동시성을 설정할 수 있습니다.
+        // 예를 들어, 3으로 설정하면 3개의 스레드가 동시에 메시지를 처리합니다.
+        // 이는 토픽의 파티션 수와 관련이 깊으며, 보통 파티션 수와 맞추거나 더 작게 설정합니다.
+
         return factory;
     }
 }
