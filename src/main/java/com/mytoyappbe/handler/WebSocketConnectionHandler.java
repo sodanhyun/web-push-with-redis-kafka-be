@@ -21,7 +21,7 @@ import java.util.Objects;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class WebSocketHandler extends TextWebSocketHandler {
+public class WebSocketConnectionHandler extends TextWebSocketHandler {
 
     /**
      * Redis에 연결된 사용자 ID를 저장하는 Set의 키입니다.

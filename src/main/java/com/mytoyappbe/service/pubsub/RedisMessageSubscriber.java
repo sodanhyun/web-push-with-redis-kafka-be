@@ -1,6 +1,6 @@
 package com.mytoyappbe.service.pubsub;
 
-import com.mytoyappbe.service.pubsub.handler.MessageHandler;
+import com.mytoyappbe.handler.MessageHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.Message;

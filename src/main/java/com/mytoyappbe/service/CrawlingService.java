@@ -3,6 +3,7 @@ package com.mytoyappbe.service;
 import com.mytoyappbe.dto.KafkaNotificationMessageDto;
 import com.mytoyappbe.service.pubsub.RedisMessagePublisher;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import java.util.concurrent.TimeUnit;
  * 최종 완료 시에는 Kafka를 통해 푸시 알림을 발행합니다.
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class CrawlingService {
 

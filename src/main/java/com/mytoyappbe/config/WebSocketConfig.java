@@ -1,6 +1,6 @@
 package com.mytoyappbe.config;
 
-import com.mytoyappbe.handler.WebSocketHandler;
+import com.mytoyappbe.handler.WebSocketConnectionHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -20,14 +20,14 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     /**
      * WebSocket 연결 및 메시지 처리를 담당하는 핸들러입니다.
-     * Spring 컨테이너에 의해 빈으로 등록된 {@link WebSocketHandler}를 주입받습니다.
+     * Spring 컨테이너에 의해 빈으로 등록된 {@link WebSocketConnectionHandler}를 주입받습니다.
      */
-    private final WebSocketHandler webSocketHandler;
+    private final WebSocketConnectionHandler webSocketConnectionHandler;
 
     /**
      * WebSocket 핸들러를 등록하고 관련 매핑 및 CORS 설정을 구성합니다.
      * <p>
-     * {@code registry.addHandler()}를 사용하여 특정 URL 패턴에 {@link WebSocketHandler}를 매핑합니다.
+     * {@code registry.addHandler()}를 사용하여 특정 URL 패턴에 {@link WebSocketConnectionHandler}를 매핑합니다.
      * <p>
      * <b>엔드포인트:</b> {@code /ws/test/{userId}}
      * 클라이언트는 이 경로로 WebSocket 연결을 시도합니다. {@code {userId}}는 경로 변수로, 연결 시 사용자 ID를 식별하는 데 사용됩니다.
@@ -41,6 +41,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
      */
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(webSocketHandler, "/ws/test/{userId}").setAllowedOrigins("*");
+        registry.addHandler(webSocketConnectionHandler, "/ws/test/{userId}").setAllowedOrigins("*");
     }
 }

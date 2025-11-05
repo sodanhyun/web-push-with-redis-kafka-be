@@ -1,4 +1,4 @@
-package com.mytoyappbe.service.pubsub.handler;
+package com.mytoyappbe.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mytoyappbe.manager.WebSocketSessionManager;

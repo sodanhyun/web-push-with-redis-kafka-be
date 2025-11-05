@@ -31,3 +31,25 @@ services:
     ports:
       - "6379:6379"
     command: redis-server --appendonly yes
+
+  mysql:
+    image: mysql:8.0
+    hostname: mysql
+    container_name: mysql
+    ports:
+      - "3308:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root # Replace with a strong password in production
+      MYSQL_DATABASE: test # Must match spring.datasource.url in application.properties
+#      MYSQL_USER: your_username # Must match spring.datasource.username in application.properties
+#      MYSQL_PASSWORD: your_password # Must match spring.datasource.password in application.properties
+    volumes:
+      - mysql_data:/var/lib/mysql # Persist data
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:

@@ -1,4 +1,4 @@
-package com.mytoyappbe.service.pubsub.handler;
+package com.mytoyappbe.handler;
 
 /**
  * Redis Pub/Sub 메시지 처리를 위한 전략 인터페이스입니다.
