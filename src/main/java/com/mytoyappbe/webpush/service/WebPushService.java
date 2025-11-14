@@ -39,7 +39,7 @@ public class WebPushService {
      * Redis 데이터베이스와 상호작용하기 위한 {@link RedisTemplate}입니다.
      * 주로 {@code opsForHash()}를 사용하여 해시 데이터 구조에 구독 정보를 저장하고 조회합니다.
      */
-    private final RedisTemplate<String, String> redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate; // RedisTemplate<String, Object>로 변경
 
     /**
      * 웹 푸시 메시지를 외부 푸시 서비스(예: Google FCM)로 전송하는 핵심 서비스입니다.
@@ -61,13 +61,13 @@ public class WebPushService {
      *
      * @param subscriptionDto 저장할 푸시 구독 정보
      */
-    public void saveSubscription(PushSubscriptionDto subscriptionDto) {
+    public void saveSubscription(PushSubscriptionDto subscriptionDto, String userId) {
         try {
             String subscriptionJson = objectMapper.writeValueAsString(subscriptionDto);
-            redisTemplate.opsForHash().put(REDIS_SUBSCRIPTION_HASH_KEY, subscriptionDto.getUserId(), subscriptionJson);
-            log.info("Subscription saved for user {}: {}", subscriptionDto.getUserId(), subscriptionJson);
+            redisTemplate.opsForHash().put(REDIS_SUBSCRIPTION_HASH_KEY, userId, subscriptionJson);
+            log.info("Subscription saved for user {}: {}", userId, subscriptionJson);
         } catch (JsonProcessingException e) {
-            log.error("Error saving subscription for user {}", subscriptionDto.getUserId(), e);
+            log.error("Error saving subscription for user {}", userId, e);
         }
     }
 

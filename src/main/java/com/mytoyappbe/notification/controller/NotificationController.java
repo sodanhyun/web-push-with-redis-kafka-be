@@ -3,6 +3,8 @@ package com.mytoyappbe.notification.controller;
 import com.mytoyappbe.notification.dto.KafkaNotificationMessageDto;
 import com.mytoyappbe.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 클라이언트로부터 알림 메시지 요청을 받아 Kafka를 통해 비동기적으로 알림을 발행합니다.
  */
 @RestController
-@RequestMapping("/api/notifications") // 이 컨트롤러의 모든 핸들러 메서드는 "/api/notifications" 경로를 기본으로 합니다.
+@RequestMapping("/api/notifications")
 @RequiredArgsConstructor
 public class NotificationController {
 
@@ -32,12 +34,14 @@ public class NotificationController {
      * {@link KafkaNotificationMessageDto} 객체로 자동 변환하여 받습니다.
      * 이 메시지는 {@link NotificationService}를 통해 Kafka의 "notification-topic"으로 발행됩니다.
      *
-     * @param messageDto 전송할 알림 메시지 정보 (사용자 ID, 메시지 내용 등 포함)
+     * @param userDetails 현재 인증된 사용자의 상세 정보
+     * @param messageDto 전송할 알림 메시지 정보 (메시지 내용 포함)
      * @return 알림 전송 성공 메시지
      */
     @PostMapping
-    public String sendNotification(@RequestBody KafkaNotificationMessageDto messageDto) {
-        notificationService.sendNotification(messageDto);
+    public String sendNotification(@AuthenticationPrincipal UserDetails userDetails,
+                                   @RequestBody KafkaNotificationMessageDto messageDto) {
+        notificationService.sendNotification(userDetails.getUsername(), messageDto);
         return "Notification sent successfully!";
     }
 }

@@ -87,4 +87,22 @@ public class WebSocketSessionManager {
             }
         });
     }
+    /**
+     * 현재 서버 인스턴스에 연결된 모든 로컬 WebSocket 세션으로 메시지를 브로드캐스트합니다.
+     * 메시지 객체는 JSON 문자열로 변환되어 전송됩니다.
+     *
+     * @param message 전송할 메시지 객체 (JSON으로 직렬화될 수 있는 형태)
+     */
+    public void sendAllLocalSessions(Object message) {
+        localSessions.forEach((userId, session) -> {
+            try {
+                if (session.isOpen()) {
+                    session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
+                }
+            } catch (IOException e) {
+                // 메시지 전송 중 발생할 수 있는 IOException을 처리합니다.
+                // 예: log.error("Failed to broadcast message to WebSocket session for user {}: {}", userId, e.getMessage());
+            }
+        });
+    }
 }

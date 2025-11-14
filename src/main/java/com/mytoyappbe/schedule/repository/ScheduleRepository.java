@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional; // Optional 임포트 추가
 
 /**
  * {@link Schedule} 엔티티에 대한 데이터베이스 접근을 처리하는 Spring Data JPA 리포지토리 인터페이스입니다.
@@ -25,4 +26,22 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
      * @return 해당 상태를 가진 {@link Schedule} 객체들의 리스트
      */
     List<Schedule> findByStatus(Schedule.JobStatus status);
+
+    /**
+     * 주어진 사용자 ID({@code userId})에 해당하는 모든 크롤링 작업 스케줄을 조회합니다.
+     *
+     * @param userId 조회할 사용자의 ID
+     * @return 해당 사용자 ID를 가진 {@link Schedule} 객체들의 리스트
+     */
+    List<Schedule> findByUserId(String userId);
+
+    /**
+     * 주어진 ID({@code id})와 사용자 ID({@code userId})에 해당하는 크롤링 작업 스케줄을 조회합니다.
+     * 이 메서드는 특정 스케줄이 특정 사용자의 소유인지 확인하는 데 사용됩니다.
+     *
+     * @param id 조회할 작업의 고유 ID
+     * @param userId 조회할 사용자의 ID
+     * @return 해당 ID와 사용자 ID를 가진 {@link Schedule} 객체를 포함하는 {@link Optional}, 없으면 빈 {@link Optional}
+     */
+    Optional<Schedule> findByIdAndUserId(Long id, String userId);
 }

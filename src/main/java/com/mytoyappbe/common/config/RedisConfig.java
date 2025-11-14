@@ -1,13 +1,16 @@
 package com.mytoyappbe.common.config;
 
-import com.mytoyappbe.websocket.pubusb.RedisMessageSubscriber;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.ObjectMapper; // ObjectMapper 임포트
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator; // BasicPolymorphicTypeValidator 임포트
+import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator; // PolymorphicTypeValidator 임포트
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
@@ -47,24 +50,31 @@ public class RedisConfig {
      * @return 직렬화 설정이 완료된 {@link RedisTemplate} 인스턴스
      */
     @Bean
+    @Primary // 이 RedisTemplate 빈을 우선적으로 사용하도록 지정
     public RedisTemplate<String, Object> redisTemplate() {
         RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(redisConnectionFactory());
 
         // Key Serializer: Redis 키를 문자열로 직렬화합니다.
-        // 사람이 읽을 수 있는 키를 사용하기 위해 StringRedisSerializer를 사용합니다.
         redisTemplate.setKeySerializer(new StringRedisSerializer());
 
         // Value Serializer: Redis 값을 JSON 형식으로 직렬화합니다.
         // GenericJackson2JsonRedisSerializer는 Java 객체를 JSON으로 변환하여 저장하므로,
         // 다양한 타입의 객체를 유연하게 저장하고 역직렬화할 수 있습니다.
-        redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        // ObjectMapper를 커스터마이징하여 다형성 직렬화를 활성화합니다.
+        ObjectMapper objectMapper = new ObjectMapper();
+        PolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
+                .allowIfBaseType(Object.class) // 모든 Object 타입에 대해 다형성 허용
+                .build();
+        // DefaultTyping.EVERYTHING 대신 DefaultTyping.NON_FINAL을 사용하고, As.PROPERTY로 타입 정보를 속성으로 포함
+        objectMapper.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
+        redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer(objectMapper));
 
         // Hash Key Serializer: 해시 데이터 구조의 필드(키)를 문자열로 직렬화합니다.
         redisTemplate.setHashKeySerializer(new StringRedisSerializer());
 
         // Hash Value Serializer: 해시 데이터 구조의 값(value)을 JSON 형식으로 직렬화합니다.
-        redisTemplate.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+        redisTemplate.setHashValueSerializer(new GenericJackson2JsonRedisSerializer(objectMapper)); // 동일한 ObjectMapper 사용
 
         return redisTemplate;
     }
@@ -74,21 +84,13 @@ public class RedisConfig {
      * 이 컨테이너는 특정 토픽(채널)에 대한 메시지 리스너를 등록하고, 메시지 수신을 관리합니다.
      *
      * @param connectionFactory Redis 연결을 위한 팩토리
-     * @param redisMessageSubscriber 메시지를 실제로 처리할 구독자(리스너) 서비스
      * @return 설정이 완료된 {@link RedisMessageListenerContainer} 인스턴스
      */
     @Bean
     public RedisMessageListenerContainer redisMessageListenerContainer(
-            RedisConnectionFactory connectionFactory,
-            RedisMessageSubscriber redisMessageSubscriber) {
+            RedisConnectionFactory connectionFactory) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
-
-        // addMessageListener: 특정 토픽 패턴에 대한 리스너를 등록합니다.
-        // 여기서는 "ws:user:*" 패턴을 사용하여 "ws:user:"로 시작하는 모든 채널의 메시지를
-        // redisMessageSubscriber가 수신하도록 설정합니다.
-        // PatternTopic 외에 단일 토픽을 구독하는 ChannelTopic도 사용할 수 있습니다.
-        container.addMessageListener(redisMessageSubscriber, new PatternTopic("ws:crawling:*"));
 
         return container;
     }

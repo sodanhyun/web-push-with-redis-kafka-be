@@ -4,6 +4,8 @@ import com.mytoyappbe.webpush.dto.PushSubscriptionDto;
 import com.mytoyappbe.webpush.service.WebPushService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -34,7 +36,7 @@ public class WebPushController {
      */
     @PostMapping("/subscribe")
     @ResponseStatus(HttpStatus.CREATED)
-    public void subscribe(@RequestBody PushSubscriptionDto subscription) {
-        webPushService.saveSubscription(subscription);
+    public void subscribe(@RequestBody PushSubscriptionDto subscription, @AuthenticationPrincipal UserDetails userDetails) {
+        webPushService.saveSubscription(subscription, userDetails.getUsername());
     }
 }

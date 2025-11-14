@@ -1,5 +1,6 @@
 package com.mytoyappbe.webpush.dto;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo; // JsonTypeInfo 임포트 추가
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,35 +11,28 @@ import lombok.Setter;
  * 주로 {@link com.mytoyappbe.webpush.controller.WebPushController}에서 요청 본문을 받을 때 사용됩니다.
  * Lombok의 {@code @Getter}와 {@code @Setter} 어노테이션을 사용하여 필드의 Getter/Setter 메서드를 자동으로 생성합니다.
  */
+@Setter
+@Getter
 public class PushSubscriptionDto {
 
     /**
      * 푸시 서비스 엔드포인트 URL입니다.
      * 이 URL로 푸시 메시지를 전송하면 클라이언트 브라우저에 알림이 전달됩니다.
      */
-    @Getter
-    @Setter
     private String endpoint;
 
     /**
      * 푸시 알림을 받을 사용자의 고유 ID입니다.
      * 이 ID를 통해 특정 사용자에게 알림을 보낼 수 있습니다.
      */
-    @Getter
-    @Setter
     private String userId;
 
     /**
      * 푸시 구독과 관련된 암호화 키 정보를 담는 중첩 클래스입니다.
      * 이 키들은 푸시 메시지를 암호화하고 복호화하는 데 사용됩니다.
      */
-    @Getter
-    @Setter
     private Keys keys;
 
-    /**
-     * 푸시 구독 암호화에 사용되는 키들을 정의하는 중첩 정적 클래스입니다.
-     */
     @Getter
     @Setter
     public static class Keys {

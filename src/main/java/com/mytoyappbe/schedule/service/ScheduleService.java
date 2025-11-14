@@ -71,6 +71,16 @@ public class ScheduleService {
     }
 
     /**
+     * 특정 사용자의 모든 크롤링 작업 스케줄 목록을 조회합니다.
+     *
+     * @param userId 스케줄을 조회할 사용자의 ID
+     * @return 해당 사용자의 {@link Schedule} 객체들의 리스트
+     */
+    public List<Schedule> getSchedulesByUserId(String userId) {
+        return jobScheduleRepository.findByUserId(userId);
+    }
+
+    /**
      * 지정된 ID의 크롤링 작업 스케줄을 취소합니다.
      * <p>
      * 데이터베이스에서 작업을 조회하고, {@link ScheduleManager}를 통해 예약된 작업을 취소한 후,
@@ -78,11 +88,12 @@ public class ScheduleService {
      * 이 메서드는 트랜잭션 내에서 실행됩니다.
      *
      * @param jobScheduleId 취소할 작업의 고유 ID
-     * @return 취소된 {@link Schedule} 객체를 포함하는 {@link Optional}, 해당 ID의 작업이 없으면 빈 {@link Optional}
+     * @param userId 요청한 사용자의 ID (소유권 확인용)
+     * @return 취소된 {@link Schedule} 객체를 포함하는 {@link Optional}, 해당 ID의 작업이 없거나 소유자가 다르면 빈 {@link Optional}
      */
     @Transactional
-    public Optional<Schedule> cancelSchedule(Long jobScheduleId) {
-        Optional<Schedule> optionalJob = jobScheduleRepository.findById(jobScheduleId);
+    public Optional<Schedule> cancelSchedule(Long jobScheduleId, String userId) {
+        Optional<Schedule> optionalJob = jobScheduleRepository.findByIdAndUserId(jobScheduleId, userId); // userId로 소유권 확인
         optionalJob.ifPresent(job -> {
             scheduleManager.cancelJob(job.getId()); // 스케줄러에서 작업 취소
             job.setStatus(Schedule.JobStatus.CANCELLED); // 데이터베이스 상태 업데이트
@@ -96,15 +107,16 @@ public class ScheduleService {
      * <p>
      * 기존 작업을 취소하고, 새로운 Cron 표현식으로 업데이트한 후 데이터베이스에 저장하고
      * {@link ScheduleManager}에 새로운 Cron 표현식으로 작업을 재예약합니다.
-     * 이 메서드는 트랜잭_ 내에서 실행됩니다.
+     * 이 메서드는 트랜잭션 내에서 실행됩니다.
      *
      * @param jobScheduleId 업데이트할 작업의 고유 ID
+     * @param userId 요청한 사용자의 ID (소유권 확인용)
      * @param newCronExpression 새로 설정할 Cron 표현식
-     * @return 업데이트된 {@link Schedule} 객체를 포함하는 {@link Optional}, 해당 ID의 작업이 없으면 빈 {@link Optional}
+     * @return 업데이트된 {@link Schedule} 객체를 포함하는 {@link Optional}, 해당 ID의 작업이 없거나 소유자가 다르면 빈 {@link Optional}
      */
     @Transactional
-    public Optional<Schedule> updateSchedule(Long jobScheduleId, String newCronExpression) {
-        Optional<Schedule> optionalJob = jobScheduleRepository.findById(jobScheduleId);
+    public Optional<Schedule> updateSchedule(Long jobScheduleId, String userId, String newCronExpression) {
+        Optional<Schedule> optionalJob = jobScheduleRepository.findByIdAndUserId(jobScheduleId, userId); // userId로 소유권 확인
         optionalJob.ifPresent(job -> {
             scheduleManager.cancelJob(job.getId()); // 기존 스케줄러 작업 취소
             job.setCronExpression(newCronExpression);
@@ -113,15 +125,6 @@ public class ScheduleService {
             scheduleManager.scheduleJob(updatedJob); // 새 Cron으로 재스케줄링
         });
         return optionalJob;
-    }
-
-    /**
-     * 모든 크롤링 작업 스케줄 목록을 조회합니다.
-     *
-     * @return 모든 {@link Schedule} 객체들의 리스트
-     */
-    public List<Schedule> getAllSchedules() {
-        return jobScheduleRepository.findAll();
     }
 
     /**

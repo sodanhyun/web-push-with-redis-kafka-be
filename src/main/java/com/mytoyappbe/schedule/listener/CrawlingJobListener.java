@@ -22,7 +22,7 @@ public class CrawlingJobListener implements JobExecutionListener {
     private static final String REDIS_SUBSCRIPTION_HASH_KEY = "web-push-subscriptions-by-user";
 
     private final NotificationService notificationService;
-    private final RedisTemplate<String, String> redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate; // RedisTemplate<String, Object>로 변경
 
 
     /**
@@ -49,7 +49,7 @@ public class CrawlingJobListener implements JobExecutionListener {
                 Object subscription = redisTemplate.opsForHash().get(REDIS_SUBSCRIPTION_HASH_KEY, userId);
                 if (subscription != null) {
                     log.info("Sending completion notification to user: {}", userId);
-                    notificationService.sendNotification(new KafkaNotificationMessageDto(userId, "크롤링 작업이 성공적으로 완료되었습니다!"));
+                    notificationService.sendNotification(userId, new KafkaNotificationMessageDto("크롤링 작업이 성공적으로 완료되었습니다!"));
                 } else {
                     log.warn("User {} has no push subscription. Skipping notification.", userId);
                 }
@@ -67,7 +67,7 @@ public class CrawlingJobListener implements JobExecutionListener {
                 Object subscription = redisTemplate.opsForHash().get(REDIS_SUBSCRIPTION_HASH_KEY, userId);
                 if (subscription != null) {
                     log.info("Sending failure notification to user: {}", userId);
-                    notificationService.sendNotification(new KafkaNotificationMessageDto(userId, "크롤링 작업이 실패했습니다. 다시 시도해주세요."));
+                    notificationService.sendNotification(userId, new KafkaNotificationMessageDto("크롤링 작업이 실패했습니다. 다시 시도해주세요."));
                 } else {
                     log.warn("User {} has no push subscription. Skipping failure notification.", userId);
                 }

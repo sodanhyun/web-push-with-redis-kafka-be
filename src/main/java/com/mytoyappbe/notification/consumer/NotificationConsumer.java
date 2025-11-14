@@ -6,6 +6,8 @@ import com.mytoyappbe.webpush.service.WebPushService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.KafkaHeaders; // KafkaHeaders 임포트
+import org.springframework.messaging.handler.annotation.Header; // Header 임포트
 import org.springframework.stereotype.Component;
 
 /**
@@ -44,15 +46,16 @@ public class NotificationConsumer {
      * 수신된 메시지는 {@link KafkaNotificationMessageDto}로 역직렬화된 후,
      * {@link WebPushService}를 통해 실제 웹 푸시 알림으로 전송됩니다.
      *
+     * @param userId Kafka 메시지의 키로 받은 사용자 ID
      * @param message Kafka로부터 수신된 JSON 형태의 알림 메시지 문자열
      */
     @KafkaListener(topics = "notification-topic", groupId = "my-group")
-    public void listen(String message) {
-        log.info("Received notification from Kafka: {}", message);
+    public void listen(@Header(KafkaHeaders.RECEIVED_KEY) String userId, String message) { // userId를 메시지 키로 받도록 수정
+        log.info("Received notification from Kafka for userId: {}, message: {}", userId, message);
         try {
             // 수신된 JSON 메시지를 KafkaNotificationMessageDto 객체로 변환합니다.
             KafkaNotificationMessageDto messageDto = objectMapper.readValue(message, KafkaNotificationMessageDto.class);
-            String userId = messageDto.getUserId();
+            // String userId = messageDto.getUserId(); // 제거
             String notificationMessage = messageDto.getMessage();
 
             // 사용자 ID와 메시지가 유효한 경우에만 웹 푸시 알림을 전송합니다.

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mytoyappbe.notification.config.KafkaTopicConfig;
 import com.mytoyappbe.notification.dto.KafkaNotificationMessageDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j; // Slf4j 임포트
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
  * 이 서비스는 {@link KafkaNotificationMessageDto} 객체를 JSON 문자열로 변환하여
  * 미리 정의된 Kafka 토픽으로 전송하는 역할을 담당합니다.
  */
+@Slf4j // Slf4j 어노테이션 추가
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
@@ -41,19 +43,19 @@ public class NotificationService {
      * <p>
      * 메시지 발행 중 {@link JsonProcessingException}이 발생하면 예외를 처리하고 로깅합니다.
      *
+     * @param userId Kafka 메시지의 키로 사용될 사용자 ID
      * @param messageDto Kafka에 발행할 알림 메시지 정보를 담은 DTO
      */
-    public void sendNotification(KafkaNotificationMessageDto messageDto) {
+    public void sendNotification(String userId, KafkaNotificationMessageDto messageDto) {
         try {
             // DTO 객체를 JSON 문자열로 변환합니다.
             String jsonMessage = objectMapper.writeValueAsString(messageDto);
-            System.out.println("Sending notification: " + jsonMessage);
-            // KafkaTemplate을 사용하여 지정된 토픽으로 메시지를 전송합니다.
-            kafkaTemplate.send(NOTIFICATION_TOPIC, jsonMessage);
+            log.info("Sending notification to Kafka for userId: {}, message: {}", userId, jsonMessage); // log.info로 변경
+            // KafkaTemplate을 사용하여 지정된 토픽으로 메시지를 전송합니다. userId를 키로 사용
+            kafkaTemplate.send(NOTIFICATION_TOPIC, userId, jsonMessage);
         } catch (JsonProcessingException e) {
             // JSON 직렬화 중 발생할 수 있는 예외를 처리합니다.
-            // 실제 애플리케이션에서는 로깅 프레임워크를 사용하여 에러를 기록하는 것이 좋습니다.
-            e.printStackTrace();
+            log.error("Error serializing notification message to JSON for userId: {}", userId, e); // log.error로 변경
         }
     }
 }

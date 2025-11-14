@@ -41,6 +41,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
      */
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(webSocketConnectionHandler, "/ws/{userId}").setAllowedOrigins("*");
+        registry.addHandler(webSocketConnectionHandler, "/ws").setAllowedOrigins("*"); // userId 제거
     }
 }

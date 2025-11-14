@@ -1,13 +1,13 @@
 package com.mytoyappbe.schedule.service;
 
 import com.mytoyappbe.schedule.entity.Schedule;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.slf4j.Slf4j; // RequiredArgsConstructor 제거
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecutionException;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.configuration.JobLocator;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.stereotype.Component;
@@ -26,7 +26,7 @@ import java.util.concurrent.ScheduledFuture;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
+// @RequiredArgsConstructor // 제거
 public class ScheduleManager {
 
     /**
@@ -53,6 +53,16 @@ public class ScheduleManager {
      * {@link ScheduledFuture}를 통해 예약된 작업을 취소하거나 상태를 확인할 수 있습니다.
      */
     private final Map<Long, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
+
+    // 생성자 직접 정의 및 @Qualifier 적용
+    public ScheduleManager(
+            @Qualifier("taskScheduler") ThreadPoolTaskScheduler taskScheduler,
+            JobLauncher jobLauncher,
+            JobLocator jobLocator) {
+        this.taskScheduler = taskScheduler;
+        this.jobLauncher = jobLauncher;
+        this.jobLocator = jobLocator;
+    }
 
     /**
      * 새로운 크롤링 작업을 스케줄링합니다.

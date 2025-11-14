@@ -17,7 +17,7 @@ public class WebSocketCrawlingHandler extends AbstractMessageHandler {
     private final ObjectMapper objectMapper;
 
     public WebSocketCrawlingHandler(WebSocketSessionManager webSocketSessionManager, ObjectMapper objectMapper) {
-        super("ws:crawling:");
+        super("ws:crawling");
         this.webSocketSessionManager = webSocketSessionManager;
         this.objectMapper = objectMapper;
     }
@@ -25,9 +25,9 @@ public class WebSocketCrawlingHandler extends AbstractMessageHandler {
     @Override
     public void handle(String channel, String messageBody) {
         try {
-            String userId = extractUserId(channel);
-            Map<String, String> data = objectMapper.readValue(messageBody, Map.class);
-            webSocketSessionManager.sendLocalMessage(userId, data);
+            // String userId = extractUserId(channel); // userId 추출 로직 제거
+            Map<String, Object> data = objectMapper.readValue(messageBody, Map.class); // Map<String, String>에서 Map<String, Object>로 변경 (progress 필드 때문에)
+            webSocketSessionManager.sendAllLocalSessions(data); // 모든 로컬 세션에 브로드캐스트
         } catch (IOException e) {
             log.error("Error processing message from Redis Pub/Sub for channel: {}", channel, e);
         }
