@@ -29,6 +29,8 @@ public class CrawlingService {
      * 이 키를 사용하여 특정 사용자가 현재 WebSocket에 연결되어 있는지 확인합니다.
      */
     private static final String USER_SESSIONS_KEY = "ws:users";
+    private static final String REDIS_SUBSCRIPTION_HASH_KEY = "web-push-subscriptions-by-user";
+
 
     /**
      * Redis Pub/Sub 메시지 발행을 담당하는 서비스입니다.
@@ -61,32 +63,44 @@ public class CrawlingService {
      */
     @Async
     public void startCrawling(String userId) {
-        // Redis Set에서 userId의 존재 여부를 확인하여 사용자가 현재 연결되어 있는지 확인합니다.
-        Boolean isMember = redisTemplate.opsForSet().isMember(USER_SESSIONS_KEY, userId);
+        try {
+            // Redis Set에서 userId의 존재 여부를 확인하여 사용자가 현재 연결되어 있는지 확인합니다.
+            Boolean isMember = redisTemplate.opsForSet().isMember(USER_SESSIONS_KEY, userId);
 
-        // 사용자가 연결되어 있는 경우에만 크롤링 작업을 진행합니다.
-        if (isMember != null && isMember) {
-            try {
-                // 크롤링 진행 상황을 10단계로 시뮬레이션합니다.
-                for (int i = 1; i <= 10; i++) {
-                    TimeUnit.SECONDS.sleep(1); // 1초 대기하여 작업 시뮬레이션
+            // 크롤링 진행 상황을 10단계로 시뮬레이션합니다.
+            for (int i = 1; i <= 10; i++) {
+                TimeUnit.SECONDS.sleep(1); // 1초 대기하여 작업 시뮬레이션
+                // 사용자가 WebSocket에 연결되어 있을 때만 실시간 진행 상황을 보냅니다.
+                if (isMember != null && isMember) {
                     CrawlingProgressMessageDto progressMessage = new CrawlingProgressMessageDto("게시글 제목 " + i, "게시글 내용 " + i, "in_progress");
-                    // Redis Pub/Sub을 통해 사용자별 토픽으로 진행 상황 메시지를 발행합니다.
                     redisMessagePublisher.publish("ws:crawling:" + userId, progressMessage);
                     System.out.println("[서버->클라이언트] title: " + progressMessage.getTitle() + " content: " + progressMessage.getContent() + "전송 완료!");
                 }
-                // 크롤링 완료 메시지를 발행합니다.
+            }
+
+            isMember = redisTemplate.opsForSet().isMember(USER_SESSIONS_KEY, userId);
+            // 사용자가 WebSocket에 연결되어 있다면, 크롤링 완료 메시지를 발행합니다.
+            if (isMember != null && isMember) {
                 CrawlingProgressMessageDto completionMessage = new CrawlingProgressMessageDto("크롤링 완료", "모든 게시글 크롤링이 완료되었습니다.", "complete");
                 redisMessagePublisher.publish("ws:crawling:" + userId, completionMessage);
-
-                // 크롤링 완료 후, Kafka를 통해 사용자에게 웹 푸시 알림을 전송합니다.
-                notificationService.sendNotification(new KafkaNotificationMessageDto(userId, "크롤링이 완료되었습니다."));
-
-            } catch (InterruptedException e) {
-                // 스레드 인터럽트 발생 시 현재 스레드의 인터럽트 상태를 다시 설정합니다.
-                Thread.currentThread().interrupt();
-                log.error("Crawling process for user {} was interrupted.", userId, e);
             }
+
+            // --- 푸시 알림 전송 로직 ---
+            // Redis에 해당 사용자의 푸시 구독 정보가 있는지 확인하여 레이스 컨디션을 방지합니다.
+            Object subscription = redisTemplate.opsForHash().get(REDIS_SUBSCRIPTION_HASH_KEY, userId);
+            if (subscription != null) {
+                // 구독 정보가 있을 경우에만 Kafka를 통해 푸시 알림을 전송합니다.
+                log.info("Push subscription found for user {}. Sending notification.", userId);
+                notificationService.sendNotification(new KafkaNotificationMessageDto(userId, "크롤링이 완료되었습니다."));
+            } else {
+                // 구독 정보가 없으면 알림을 보내지 않고 로그를 남깁니다.
+                log.warn("User {} has no push subscription. Skipping notification.", userId);
+            }
+
+        } catch (InterruptedException e) {
+            // 스레드 인터럽트 발생 시 현재 스레드의 인터럽트 상태를 다시 설정합니다.
+            Thread.currentThread().interrupt();
+            log.error("Crawling process for user {} was interrupted.", userId, e);
         }
     }
 }

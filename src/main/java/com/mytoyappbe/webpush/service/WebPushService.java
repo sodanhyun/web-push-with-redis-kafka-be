@@ -96,8 +96,20 @@ public class WebPushService {
             // PushService 라이브러리에서 사용하는 Subscription 객체로 변환합니다.
             Subscription subscription = new Subscription(subDto.getEndpoint(), new Subscription.Keys(subDto.getKeys().getP256dh(), subDto.getKeys().getAuth()));
 
-            // 전송할 알림 메시지를 생성합니다.
-            Notification notification = new Notification(subscription, message);
+            // 1. 푸시 알림 페이로드(JSON)를 생성합니다.
+            // 서비스 워커(sw.js)가 JSON 페이로드를 기대하므로, Map을 사용하여 구조를 만듭니다.
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            payload.put("title", "새로운 알림");
+            payload.put("body", message);
+            payload.put("url", "/"); // 알림 클릭 시 이동할 URL
+
+            // 2. Map을 JSON 문자열로 직렬화합니다.
+            String payloadJson = objectMapper.writeValueAsString(payload);
+
+            // 3. 직렬화된 JSON 문자열과 Urgency를 Notification 객체에 담아 전송합니다.
+            // Urgency를 'high'로 설정하여 OS 수준의 절전 기능에 의한 지연을 최소화합니다.
+            Notification notification = new Notification(subscription, payloadJson, nl.martijndwars.webpush.Urgency.HIGH);
+
             // PushService를 통해 알림을 전송하고 응답을 받습니다.
             HttpResponse response = pushService.send(notification);
             int statusCode = response.getStatusLine().getStatusCode();

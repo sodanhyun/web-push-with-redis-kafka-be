@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobExecutionListener;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 /**
@@ -18,7 +19,11 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class CrawlingJobListener implements JobExecutionListener {
 
+    private static final String REDIS_SUBSCRIPTION_HASH_KEY = "web-push-subscriptions-by-user";
+
     private final NotificationService notificationService;
+    private final RedisTemplate<String, String> redisTemplate;
+
 
     /**
      * Job 실행 전에 호출됩니다. 현재는 특별한 로직이 없습니다.
@@ -40,8 +45,14 @@ public class CrawlingJobListener implements JobExecutionListener {
             log.info("Job {} completed successfully.", jobExecution.getJobInstance().getJobName());
             String userId = jobExecution.getJobParameters().getString("userId");
             if (userId != null) {
-                log.info("Sending completion notification to user: {}", userId);
-                notificationService.sendNotification(new KafkaNotificationMessageDto(userId, "크롤링 작업이 성공적으로 완료되었습니다!"));
+                // Redis에 해당 사용자의 푸시 구독 정보가 있는지 확인합니다.
+                Object subscription = redisTemplate.opsForHash().get(REDIS_SUBSCRIPTION_HASH_KEY, userId);
+                if (subscription != null) {
+                    log.info("Sending completion notification to user: {}", userId);
+                    notificationService.sendNotification(new KafkaNotificationMessageDto(userId, "크롤링 작업이 성공적으로 완료되었습니다!"));
+                } else {
+                    log.warn("User {} has no push subscription. Skipping notification.", userId);
+                }
             } else {
                 log.warn("Job {} completed, but userId parameter was not found. Cannot send notification.", jobExecution.getJobInstance().getJobName());
             }
@@ -52,8 +63,14 @@ public class CrawlingJobListener implements JobExecutionListener {
                     jobExecution.getAllFailureExceptions());
             String userId = jobExecution.getJobParameters().getString("userId");
             if (userId != null) {
-                log.info("Sending failure notification to user: {}", userId);
-                notificationService.sendNotification(new KafkaNotificationMessageDto(userId, "크롤링 작업이 실패했습니다. 다시 시도해주세요."));
+                // Redis에 해당 사용자의 푸시 구독 정보가 있는지 확인합니다.
+                Object subscription = redisTemplate.opsForHash().get(REDIS_SUBSCRIPTION_HASH_KEY, userId);
+                if (subscription != null) {
+                    log.info("Sending failure notification to user: {}", userId);
+                    notificationService.sendNotification(new KafkaNotificationMessageDto(userId, "크롤링 작업이 실패했습니다. 다시 시도해주세요."));
+                } else {
+                    log.warn("User {} has no push subscription. Skipping failure notification.", userId);
+                }
             } else {
                 log.warn("Job {} failed, but userId parameter was not found. Cannot send failure notification.", jobExecution.getJobInstance().getJobName());
             }
