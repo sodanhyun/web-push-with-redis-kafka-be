@@ -1,7 +1,15 @@
+/**
+ * @file ScheduleManager.java
+ * @description 크롤링 작업을 동적으로 스케줄링하고 관리하는 컴포넌트입니다.
+ *              {@link ThreadPoolTaskScheduler}를 사용하여 Cron 표현식에 따라 작업을 예약하고,
+ *              Spring Batch의 {@link JobLauncher}를 통해 배치 작업을 실행합니다.
+ *              예약된 작업의 취소 및 재스케줄링 기능을 제공하여 런타임에 스케줄을 유연하게 제어할 수 있도록 합니다.
+ */
+
 package com.mytoyappbe.schedule.service;
 
 import com.mytoyappbe.schedule.entity.Schedule;
-import lombok.extern.slf4j.Slf4j; // RequiredArgsConstructor 제거
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecutionException;
 import org.springframework.batch.core.JobParametersBuilder;
@@ -18,43 +26,48 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
 /**
- * 크롤링 작업을 동적으로 스케줄링하고 관리하는 컴포넌트입니다.
- * <p>
- * {@link ThreadPoolTaskScheduler}를 사용하여 Cron 표현식에 따라 작업을 예약하고,
- * Spring Batch의 {@link JobLauncher}를 통해 배치 작업을 실행합니다.
- * 예약된 작업의 취소 및 재스케줄링 기능을 제공하여 런타임에 스케줄을 유연하게 제어할 수 있도록 합니다.
+ * @class ScheduleManager
+ * @description 크롤링 작업을 동적으로 스케줄링하고 관리하는 컴포넌트입니다.
+ *              `ThreadPoolTaskScheduler`를 사용하여 Cron 표현식에 따라 작업을 예약하고,
+ *              `JobLauncher`를 통해 Spring Batch 작업을 실행합니다.
+ *              예약된 작업의 취소 및 재스케줄링 기능을 제공합니다.
  */
-@Slf4j
-@Component
-// @RequiredArgsConstructor // 제거
+@Slf4j // 로깅을 위한 Lombok 어노테이션
+@Component // Spring 컨테이너에 빈으로 등록합니다.
 public class ScheduleManager {
 
     /**
      * 작업을 예약하고 실행하는 데 사용되는 스레드 풀 기반의 스케줄러입니다.
-     * {@link ThreadPoolTaskScheduler}는 Spring이 제공하는 유연한 스케줄링 메커니즘입니다.
+     * `ThreadPoolTaskScheduler`는 Spring이 제공하는 유연한 스케줄링 메커니즘입니다.
      */
     private final ThreadPoolTaskScheduler taskScheduler;
 
     /**
      * Spring Batch Job을 실행하는 데 사용되는 런처입니다.
-     * 이 런처를 통해 정의된 {@link Job}을 JobParameters와 함께 실행할 수 있습니다.
+     * 이 런처를 통해 정의된 `Job`을 `JobParameters`와 함께 실행할 수 있습니다.
      */
     private final JobLauncher jobLauncher;
 
     /**
-     * Spring 컨텍스트에 등록된 {@link Job} 빈을 이름으로 조회하는 데 사용됩니다.
+     * Spring 컨텍스트에 등록된 `Job` 빈을 이름으로 조회하는 데 사용됩니다.
      * 이를 통해 동적으로 실행할 Job을 찾을 수 있습니다.
      */
     private final JobLocator jobLocator;
 
     /**
      * 현재 스케줄링된 작업들을 관리하는 맵입니다.
-     * {@link Schedule}의 ID를 키로, 예약된 작업의 {@link ScheduledFuture} 객체를 값으로 가집니다.
-     * {@link ScheduledFuture}를 통해 예약된 작업을 취소하거나 상태를 확인할 수 있습니다.
+     * `Schedule`의 ID를 키로, 예약된 작업의 `ScheduledFuture` 객체를 값으로 가집니다.
+     * `ScheduledFuture`를 통해 예약된 작업을 취소하거나 상태를 확인할 수 있습니다.
      */
     private final Map<Long, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
 
-    // 생성자 직접 정의 및 @Qualifier 적용
+    /**
+     * @constructor ScheduleManager
+     * @description `ScheduleManager`의 생성자입니다. 필요한 의존성들을 주입받습니다.
+     * @param {ThreadPoolTaskScheduler} taskScheduler - 작업을 예약하는 스케줄러
+     * @param {JobLauncher} jobLauncher - Spring Batch Job을 실행하는 런처
+     * @param {JobLocator} jobLocator - Spring Batch Job을 이름으로 찾는 로케이터
+     */
     public ScheduleManager(
             @Qualifier("taskScheduler") ThreadPoolTaskScheduler taskScheduler,
             JobLauncher jobLauncher,
@@ -65,16 +78,15 @@ public class ScheduleManager {
     }
 
     /**
-     * 새로운 크롤링 작업을 스케줄링합니다.
-     * <p>
-     * 이전에 동일한 ID로 스케줄링된 작업이 있다면 먼저 취소하고 새로 예약합니다.
-     * 작업은 {@link CronTrigger}에 정의된 Cron 표현식에 따라 주기적으로 실행됩니다.
-     * 실행 시 Spring Batch {@link Job}을 {@link JobLauncher}를 통해 시작합니다.
-     *
-     * @param jobSchedule 스케줄링할 크롤링 작업 정보 (ID, userId, cronExpression, jobName 등 포함)
+     * @method scheduleJob
+     * @description 새로운 크롤링 작업을 스케줄링합니다.
+     *              이전에 동일한 ID로 스케줄링된 작업이 있다면 먼저 취소하고 새로 예약합니다.
+     *              작업은 `CronTrigger`에 정의된 Cron 표현식에 따라 주기적으로 실행됩니다.
+     *              실행 시 Spring Batch `Job`을 `JobLauncher`를 통해 시작합니다.
+     * @param {Schedule} jobSchedule - 스케줄링할 크롤링 작업 정보 (ID, userId, cronExpression, jobName 등 포함)
      */
     public void scheduleJob(Schedule jobSchedule) {
-        // 기존에 스케줄링된 작업이 있다면 취소하여 중복 실행을 방지하고 재스케줄링을 가능하게 합니다.
+        // 기존에 스케줄링된 작업이 있다면 취소합니다.
         cancelJob(jobSchedule.getId());
 
         // 스케줄러에 의해 실행될 실제 작업 (Runnable)을 정의합니다.
@@ -84,21 +96,18 @@ public class ScheduleManager {
                 Job job = jobLocator.getJob(jobSchedule.getJobName());
 
                 // Job Parameters를 빌드합니다.
-                // Job Parameters는 JobInstance를 고유하게 식별하는 데 사용되며, Job 실행에 필요한 데이터를 전달할 수 있습니다.
+                // Job Parameters는 JobInstance를 고유하게 식별하고, Job 실행에 필요한 데이터를 전달합니다.
                 JobParametersBuilder jobParametersBuilder = new JobParametersBuilder();
                 jobParametersBuilder.addString("userId", jobSchedule.getUserId());
-                // "run.date" 파라미터는 JobInstance를 고유하게 만들기 위해 일반적으로 사용됩니다.
-                // 동일한 Job 이름과 Job Parameters로 Job을 여러 번 실행하면 Spring Batch는 동일한 JobInstance로 간주합니다.
-                // 따라서 매번 다른 JobInstance를 생성하려면 고유한 파라미터(예: 현재 시각)를 추가해야 합니다.
+                // "run.date" 파라미터는 매번 다른 JobInstance를 생성하기 위해 현재 시각을 추가합니다.
                 jobParametersBuilder.addDate("run.date", new Date());
                 // TODO: jobSchedule.getJobParameters() (JSON 문자열)를 파싱하여 추가 파라미터를 설정할 수 있습니다.
-                // 예: if (jobSchedule.getJobParameters() != null) { ... parse JSON ... }
 
                 // JobLauncher를 통해 Spring Batch Job을 실행합니다.
                 jobLauncher.run(job, jobParametersBuilder.toJobParameters());
                 log.info("Scheduled job {} (userId: {}) executed successfully.", jobSchedule.getId(), jobSchedule.getUserId());
             } catch (JobExecutionException e) {
-                // Job 실행 중 Spring Batch 관련 예외 발생 시 처리
+                // Spring Batch Job 실행 중 예외 발생 시 처리
                 log.error("Failed to execute scheduled job {} (userId: {}): {}", jobSchedule.getId(), jobSchedule.getUserId(), e.getMessage());
                 // TODO: Job 상태를 FAILED로 업데이트하는 로직 추가
             } catch (Exception e) {
@@ -116,11 +125,10 @@ public class ScheduleManager {
     }
 
     /**
-     * 스케줄링된 작업을 취소합니다.
-     * <p>
-     * 맵에서 해당 {@link ScheduledFuture}를 찾아 {@code cancel(true)}를 호출하여 작업을 중단합니다.
-     *
-     * @param jobScheduleId 취소할 작업의 고유 ID
+     * @method cancelJob
+     * @description 스케줄링된 작업을 취소합니다.
+     *              맵에서 해당 `ScheduledFuture`를 찾아 `cancel(true)`를 호출하여 작업을 중단합니다.
+     * @param {Long} jobScheduleId - 취소할 작업의 고유 ID
      */
     public void cancelJob(Long jobScheduleId) {
         ScheduledFuture<?> scheduledFuture = scheduledTasks.get(jobScheduleId);

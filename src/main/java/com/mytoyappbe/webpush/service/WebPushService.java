@@ -1,3 +1,10 @@
+/**
+ * @file WebPushService.java
+ * @description 웹 푸시(Web Push) 구독 정보를 관리하고, 실제 푸시 알림을 전송하는 서비스 클래스입니다.
+ *              클라이언트로부터 받은 푸시 구독 정보를 Redis에 저장하고, 필요할 때 Redis에서 구독 정보를 가져와
+ *              `PushService`를 사용하여 사용자에게 알림을 보냅니다.
+ */
+
 package com.mytoyappbe.webpush.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -19,14 +26,13 @@ import java.security.GeneralSecurityException;
 import java.util.concurrent.ExecutionException;
 
 /**
- * 웹 푸시(Web Push) 구독 정보를 관리하고, 실제 푸시 알림을 전송하는 서비스 클래스입니다.
- * <p>
- * 클라이언트로부터 받은 푸시 구독 정보를 Redis에 저장하고, 필요할 때 Redis에서 구독 정보를 가져와
- * {@link PushService}를 사용하여 사용자에게 알림을 보냅니다.
+ * @class WebPushService
+ * @description 웹 푸시 구독 정보를 Redis에 저장하고 관리하며,
+ *              `PushService`를 사용하여 실제 푸시 알림을 클라이언트에게 전송하는 서비스입니다.
  */
-@Slf4j
-@Service
-@RequiredArgsConstructor
+@Slf4j // 로깅을 위한 Lombok 어노테이션
+@Service // Spring 서비스 컴포넌트임을 나타냅니다.
+@RequiredArgsConstructor // final 필드에 대한 생성자를 자동으로 생성합니다.
 public class WebPushService {
 
     /**
@@ -37,9 +43,9 @@ public class WebPushService {
 
     /**
      * Redis 데이터베이스와 상호작용하기 위한 {@link RedisTemplate}입니다.
-     * 주로 {@code opsForHash()}를 사용하여 해시 데이터 구조에 구독 정보를 저장하고 조회합니다.
+     * 주로 `opsForHash()`를 사용하여 해시 데이터 구조에 구독 정보를 저장하고 조회합니다.
      */
-    private final RedisTemplate<String, Object> redisTemplate; // RedisTemplate<String, Object>로 변경
+    private final RedisTemplate<String, Object> redisTemplate;
 
     /**
      * 웹 푸시 메시지를 외부 푸시 서비스(예: Google FCM)로 전송하는 핵심 서비스입니다.
@@ -54,12 +60,12 @@ public class WebPushService {
     private final ObjectMapper objectMapper;
 
     /**
-     * 클라이언트로부터 받은 푸시 구독 정보를 Redis에 저장합니다.
-     * <p>
-     * {@link PushSubscriptionDto} 객체를 JSON 문자열로 직렬화하여 Redis의 해시(Hash) 구조에 저장합니다.
-     * 키는 {@code REDIS_SUBSCRIPTION_HASH_KEY}이고, 필드는 {@code subscriptionDto.getUserId()}입니다.
-     *
-     * @param subscriptionDto 저장할 푸시 구독 정보
+     * @method saveSubscription
+     * @description 클라이언트로부터 받은 푸시 구독 정보를 Redis에 저장합니다.
+     *              {@link PushSubscriptionDto} 객체를 JSON 문자열로 직렬화하여 Redis의 해시(Hash) 구조에 저장합니다.
+     *              키는 `REDIS_SUBSCRIPTION_HASH_KEY`이고, 필드는 `subscriptionDto.getUserId()`입니다.
+     * @param {PushSubscriptionDto} subscriptionDto - 저장할 푸시 구독 정보
+     * @param {String} userId - 구독을 요청한 사용자의 ID
      */
     public void saveSubscription(PushSubscriptionDto subscriptionDto, String userId) {
         try {
@@ -72,15 +78,12 @@ public class WebPushService {
     }
 
     /**
-     * 특정 사용자에게 웹 푸시 알림을 전송합니다.
-     * <p>
-     * 1. Redis에서 해당 사용자의 푸시 구독 정보를 조회합니다.
-     * 2. 조회된 JSON 문자열을 {@link PushSubscriptionDto} 객체로 역직렬화합니다.
-     * 3. {@link PushService}를 사용하여 알림을 전송합니다.
-     * 4. 알림 전송 결과(HTTP 상태 코드)에 따라 만료된 구독을 Redis에서 제거하는 등의 후처리를 수행합니다.
-     *
-     * @param userId 알림을 전송할 사용자의 ID
-     * @param message 사용자에게 보낼 알림 메시지 내용
+     * @method sendNotificationToUser
+     * @description 특정 사용자에게 웹 푸시 알림을 전송합니다.
+     *              Redis에서 해당 사용자의 푸시 구독 정보를 조회하고, `PushService`를 사용하여 알림을 전송합니다.
+     *              알림 전송 결과(HTTP 상태 코드)에 따라 만료된 구독을 Redis에서 제거하는 등의 후처리를 수행합니다.
+     * @param {String} userId - 알림을 전송할 사용자의 ID
+     * @param {String} message - 사용자에게 보낼 알림 메시지 내용
      */
     public void sendNotificationToUser(String userId, String message) {
         // Redis에서 해당 사용자의 구독 정보를 조회합니다.
@@ -91,22 +94,22 @@ public class WebPushService {
         }
 
         try {
-            // JSON 문자열을 PushSubscriptionDto 객체로 변환합니다.
+            // JSON 문자열을 PushSubscriptionDto 객체로 역직렬화합니다.
             PushSubscriptionDto subDto = objectMapper.readValue(subscriptionJson, PushSubscriptionDto.class);
             // PushService 라이브러리에서 사용하는 Subscription 객체로 변환합니다.
             Subscription subscription = new Subscription(subDto.getEndpoint(), new Subscription.Keys(subDto.getKeys().getP256dh(), subDto.getKeys().getAuth()));
 
-            // 1. 푸시 알림 페이로드(JSON)를 생성합니다.
+            // 푸시 알림 페이로드(JSON)를 생성합니다.
             // 서비스 워커(sw.js)가 JSON 페이로드를 기대하므로, Map을 사용하여 구조를 만듭니다.
             java.util.Map<String, Object> payload = new java.util.HashMap<>();
             payload.put("title", "새로운 알림");
             payload.put("body", message);
             payload.put("url", "/"); // 알림 클릭 시 이동할 URL
 
-            // 2. Map을 JSON 문자열로 직렬화합니다.
+            // Map을 JSON 문자열로 직렬화합니다.
             String payloadJson = objectMapper.writeValueAsString(payload);
 
-            // 3. 직렬화된 JSON 문자열과 Urgency를 Notification 객체에 담아 전송합니다.
+            // 직렬화된 JSON 문자열과 Urgency를 Notification 객체에 담아 전송합니다.
             // Urgency를 'high'로 설정하여 OS 수준의 절전 기능에 의한 지연을 최소화합니다.
             Notification notification = new Notification(subscription, payloadJson, nl.martijndwars.webpush.Urgency.HIGH);
 

@@ -49,6 +49,10 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test' // Spring Security 테스트 의존성 추가
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    // Spring Session Redis (STOMP 브로커의 메시지 전송 계층으로 Redis 사용)
+    implementation 'org.springframework.session:spring-session-data-redis'
+    // Reactor Netty (STOMP 브로커 릴레이를 위한 의존성)
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
 }
 
 tasks.named('test') {

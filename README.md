@@ -6,7 +6,7 @@
 
 ### 백엔드 (Spring Boot)
 
-Spring Boot 백엔드 애플리케이션은 웹 푸시 알림 기능을 제공하고, Redis를 통한 구독 및 분산 세션 관리, Kafka를 통한 비동기 알림 처리, WebSocket과 Redis Pub/Sub을 통한 실시간 통신을 통합합니다. 여기에 추가적으로 Spring Batch와 MySQL을 사용하여 크롤링 작업을 동적으로 스케줄링하고 관리하는 기능을 포함합니다.
+Spring Boot 백엔드 애플리케이션은 웹 푸시 알림 기능을 제공하고, Redis를 통한 구독 및 분산 세션 관리, Kafka를 통한 비동기 알림 처리, **STOMP over WebSocket과 Spring Session Redis를 통한 분산 실시간 통신**을 통합합니다. 여기에 추가적으로 Spring Batch와 MySQL을 사용하여 크롤링 작업을 동적으로 스케줄링하고 관리하는 기능을 포함합니다.
 
 ### 프론트엔드 (React)
 
@@ -19,7 +19,7 @@ React 프론트엔드는 백엔드와 연동하여 사용자에게 푸시 알림
 *   **웹 푸시 프로토콜 구현**: VAPID를 사용하여 구독된 클라이언트에 푸시 알림을 보냅니다.
 *   **Redis 통합**: 웹 푸시 구독 정보 저장 및 여러 서버 인스턴스에 걸친 실시간 사용자 세션 관리를 수행합니다.
 *   **Kafka 통합**: 확장 가능하고 분리된 메시징을 위해 알림 요청을 비동기적으로 처리합니다.
-*   **분산 실시간 통신**: Spring WebSocket과 **Redis Pub/Sub**을 결합하여 여러 백엔드 인스턴스 환경에서도 특정 사용자에게 실시간 메시지를 안정적으로 전송합니다.
+*   **분산 실시간 통신**: **Spring STOMP over WebSocket과 Spring Session Redis**를 결합하여 여러 백엔드 인스턴스 환경에서도 특정 사용자에게 실시간 메시지를 안정적으로 전송합니다.
 *   **동적 크롤링 스케줄링**: **Spring Batch와 MySQL**을 사용하여 Cron 표현식 기반의 크롤링 작업을 동적으로 예약, 관리, 취소합니다.
 *   **VAPID 키 관리**: 푸시 서비스 인증을 위해 VAPID 공개 및 개인 키를 안전하게 처리합니다.
 *   **비동기 처리**: Spring의 `@Async`를 활용하여 비차단 작업을 수행하고 애플리케이션 응답성을 향상시킵니다.
@@ -27,7 +27,7 @@ React 프론트엔드는 백엔드와 연동하여 사용자에게 푸시 알림
 ### 프론트엔드
 
 *   **푸시 알림 관리**: `usePushNotification` 훅을 통해 알림 권한 요청, 구독, 해지 기능을 제공합니다.
-*   **실시간 웹소켓 통신**: `useWebSocket` 훅을 통해 백엔드와 실시간으로 데이터를 주고받으며 크롤링 진행 상황을 모니터링합니다.
+*   **실시간 웹소켓 통신**: `useWebSocketStore`를 통해 백엔드와 실시간으로 데이터를 주고받으며 크롤링 진행 상황을 모니터링합니다.
 *   **크롤링 스케줄 UI**: 백엔드의 크롤링 스케줄 관리 API와 연동하여 스케줄을 추가, 조회, 수정, 취소하는 사용자 인터페이스를 제공합니다.
 *   **전역 상태 관리**: Zustand를 사용하여 `userId`와 같은 공통 상태를 효율적으로 관리하여 컴포넌트 간의 결합도를 낮춥니다.
 
@@ -38,10 +38,10 @@ React 프론트엔드는 백엔드와 연동하여 사용자에게 푸시 알림
 *   **프레임워크**: Spring Boot 3.3.0, Spring Batch
 *   **언어**: Java 21
 *   **빌드 도구**: Gradle
-*   **메시징**: Apache Kafka, Redis Pub/Sub
+*   **메시징**: Apache Kafka, **Spring Session Redis**
 *   **데이터 저장소**: Redis, MySQL
 *   **Web Push 라이브러리**: `nl.martijndwars:web-push`
-*   **실시간 통신**: Spring WebSocket
+*   **실시간 통신**: **Spring STOMP over WebSocket (Spring Session Redis, Reactor Netty)**
 *   **유틸리티**: Lombok
 *   **JSON 처리**: Jackson
 
@@ -207,7 +207,7 @@ npm run dev
 
 1.  **프론트엔드 구독**: 프론트엔드에서 알림 권한을 부여하고 푸시 알림을 구독합니다.
 2.  **테스트 푸시 알림**: 프론트엔드 UI로 테스트 푸시 알림을 보냅니다. 백엔드가 Kafka로 메시지를 보내고, 소비되어 웹 푸시 알림으로 발송됩니다.
-3.  **크롤링 시작**: 프론트엔드 UI로 크롤링 시뮬레이션을 시작합니다. 백엔드는 WebSocket을 통해 실시간 업데이트를 보내고 완료 시 최종 푸시 알림을 보냅니다.
+3.  **크롤링 시작**: 프론트엔드 UI로 크롤링 시뮬레이션을 시작합니다. 백엔드는 **STOMP over WebSocket**을 통해 **특정 사용자에게** 실시간 업데이트를 보내고 완료 시 최종 푸시 알림을 보냅니다.
 4.  **크롤링 스케줄 관리**: 프론트엔드 UI의 스케줄 관리 섹션을 통해 Cron 표현식을 사용하여 크롤링 작업을 예약, 확인, 수정 또는 취소할 수 있습니다.
 
 ---
@@ -228,20 +228,13 @@ npm run dev
     3.  `NotificationConsumer`가 Kafka 메시지를 소비합니다.
     4.  `WebPushService`는 **Redis**에 저장된 모든 구독 정보를 가져와 각 클라이언트에게 푸시 알림을 전송합니다.
 
-*   **실시간 크롤링 알림 흐름 (WebSocket + Redis Pub/Sub)**:
-    1.  **연결 수립**: 프론트엔드가 백엔드 인스턴스 중 하나와 `/ws/test/{userId}`로 WebSocket 연결을 맺습니다.
-    2.  **세션 등록**: `WebSocketConnectionHandler`가 연결을 처리합니다.
-        *   해당 인스턴스의 `WebSocketSessionManager`에 세션을 **로컬**로 저장합니다.
-        *   전체 연결 사용자 추적을 위해 **Redis**의 `ws:users` Set에 `userId`를 추가합니다.
-    3.  **크롤링 시작**: 프론트엔드가 `/api/crawling/start/{userId}`를 호출합니다.
-    4.  **세션 확인 및 발행**: `CrawlingService`는 다음을 수행합니다.
-        *   Redis의 `ws:users` Set을 통해 `userId`가 활성 세션을 가지고 있는지 확인합니다.
-        *   크롤링 작업을 비동기로 시작하고, 진행 상황 메시지를 `RedisMessagePublisher`를 통해 `ws:crawling:{userId}` 채널로 **발행(Publish)**합니다.
-    5.  **메시지 수신 및 전송**:
-        *   `RedisMessageSubscriber`가 `ws:user:*` 및 `ws:crawling:*` 패턴의 채널을 **구독(Subscribe)**하고 있다가 메시지를 수신합니다.
-        *   `MessageHandlerFactory`를 통해 `CrawlingProgressMessageHandler`와 같은 적절한 핸들러를 찾아 메시지를 처리합니다.
-        *   `CrawlingProgressMessageHandler`는 수신된 크롤링 진행 메시지를 `WebSocketSessionManager`를 통해 해당 **로컬 세션**으로 전송합니다.
-    6.  **연결 종료**: 연결이 끊어지면 `WebSocketConnectionHandler`는 로컬 세션을 제거하고 Redis의 `ws:users` Set에서도 `userId`를 제거합니다.
+*   **실시간 크롤링 알림 흐름 (STOMP over WebSocket + Spring Session Redis)**:
+    1.  **연결 수립**: 프론트엔드가 백엔드 인스턴스 중 하나와 `/ws` 엔드포인트로 STOMP over WebSocket 연결을 맺습니다.
+    2.  **인증**: HTTP 핸드셰이크 시 JWT 토큰을 `Authorization` 헤더에 포함하여 전달하고, 백엔드의 `WebSocketAuthInterceptor`에서 이를 검증합니다.
+    3.  **구독**: 클라이언트는 `/user/queue/crawling-progress` 목적지를 구독하여 자신에게 전송되는 크롤링 진행 상황 메시지를 수신합니다.
+    4.  **크롤링 시작**: 프론트엔드가 `/api/crawling/start/{userId}`를 호출합니다.
+    5.  **메시지 전송**: `CrawlingService`는 크롤링 작업을 비동기로 시작하고, 진행 상황 메시지를 `SimpMessagingTemplate.convertAndSendToUser(userId, "/queue/crawling-progress", message);`를 사용하여 특정 사용자에게 전송합니다.
+    6.  **분산 처리**: `Spring Session Redis`가 활성화되어 있으므로, `SimpMessagingTemplate`이 보낸 메시지는 Redis를 통해 모든 백엔드 인스턴스로 전파되고, 해당 유저가 연결된 인스턴스에서 클라이언트로 메시지가 전달됩니다.
 
 *   **크롤링 스케줄링 흐름 (Spring Batch + MySQL + 동적 스케줄러)**:
     1.  **스케줄 등록/관리**: 프론트엔드에서 새로운 크롤링 스케줄(사용자 ID, Cron 표현식)을 백엔드의 `/api/schedules/crawling` 엔드포인트로 전송합니다.
@@ -257,8 +250,9 @@ npm run dev
 
 *   `MyToyAppBeApplication.java`: Spring Boot 애플리케이션의 메인 진입점. `@EnableCaching` 어노테이션이 추가되어 Spring의 캐싱 메커니즘을 활성화합니다.
 
-*   `com.mytoyappbe.common.config.RedisConfig.java`: Redis 연결과 `RedisTemplate`을 구성합니다. 또한, **`RedisMessageListenerContainer`**를 설정하여 `RedisMessageSubscriber`를 특정 Redis 채널 패턴(`ws:user:*`, `ws:crawling:*`)의 리스너로 등록합니다.
-*   `com.mytoyappbe.websocket.WebSocketConfig.java`: `/ws/test/{userId}` 경로에 `TestWebSocketHandler`를 등록하여 WebSocket 엔드포인트를 활성화합니다.
+*   `com.mytoyappbe.common.config.RedisConfig.java`: Redis 연결과 `RedisTemplate`을 구성합니다. `GenericJackson2JsonRedisSerializer`를 사용하여 객체 직렬화를 처리합니다.
+*   `com.mytoyappbe.websocket.WebSocketConfig.java`: STOMP over WebSocket 엔드포인트(`/ws`)를 등록하고 메시지 브로커를 구성합니다. `enableSimpleBroker`를 사용하여 인메모리 브로커를 활성화하고, `spring-session-data-redis`를 통해 Redis를 메시지 브로커의 백플레인으로 활용합니다.
+*   `com.mytoyappbe.auth.config.security.WebSocketSecurityConfig.java`: STOMP WebSocket 연결 시 JWT 토큰을 검증하는 `WebSocketAuthInterceptor`를 등록하여 보안을 강화합니다.
 
 *   `com.mytoyappbe.schedule.entity.Schedule.java`: 크롤링 스케줄 작업의 정보를 저장하는 JPA 엔티티입니다. Cron 표현식, 사용자 ID, 작업 이름, 상태 등 스케줄 관련 모든 정보를 포함합니다.
 
@@ -268,20 +262,12 @@ npm run dev
 
 *   `com.mytoyappbe.schedule.DynamicScheduler.java`: {@link ThreadPoolTaskScheduler}를 사용하여 Cron 표현식에 따라 Spring Batch 작업을 동적으로 스케줄링, 실행, 취소하는 핵심 컴포넌트입니다.
 
-*   `com.mytoyappbe.websocket.handler.WebSocketConnectionHandler.java`: WebSocket 연결, 메시지, 종료 이벤트를 처리합니다. 연결이 수립되면 로컬 세션을 `WebSocketSessionManager`에 추가하고, 분산 환경에서 사용자 연결 상태를 관리하기 위해 **Redis Set에 `userId`를 추가**합니다.
-*   `com.mytoyappbe.websocket.handler.MessageHandler.java`: Redis Pub/Sub 메시지를 처리하기 위한 인터페이스입니다.
-*   `com.mytoyappbe.websocket.handler.MessageHandlerFactory.java`: `MessageHandler` 구현체들을 관리하고, 채널에 따라 적절한 핸들러를 반환합니다.
-*   `com.mytoyappbe.websocket.handler.CrawlingProgressMessageHandler.java`: `ws:crawling:*` 채널에서 수신된 크롤링 진행 메시지를 처리하고, 해당 사용자에게 WebSocket을 통해 전달합니다.
+*   `com.mytoyappbe.websocket.handler.WebSocketConnectionHandler.java`: 일반 WebSocket 연결을 처리하는 핸들러 (현재 STOMP 기반 메시징에서는 직접 사용되지 않음).
 
-*   `com.mytoyappbe.websocket.manager.WebSocketSessionManager.java`: **로컬 인스턴스 내**의 활성 WebSocket 세션만 관리합니다. 세션을 추가, 제거하고 특정 로컬 세션으로 메시지를 보내는 메서드를 제공합니다.
-
-*   `com.mytoyappbe.crawling.service.CrawlingService.java`: 모의 웹 크롤링 로직을 구현합니다. Redis를 통해 사용자의 활성 세션 존재 여부를 확인한 후, **`RedisMessagePublisher`**를 사용하여 크롤링 진행 상황을 Redis Pub/Sub 채널로 발행합니다.
+*   `com.mytoyappbe.crawling.service.CrawlingService.java`: 모의 웹 크롤링 로직을 구현합니다. 크롤링 진행 상황 메시지를 `SimpMessagingTemplate.convertAndSendToUser()`를 사용하여 특정 사용자에게 전송합니다.
 *   `com.mytoyappbe.notification.service.NotificationService.java`: 알림 메시지를 Kafka에 발행하는 역할을 합니다.
 *   `com.mytoyappbe.webpush.service.WebPushService.java`: 웹 푸시 구독 정보를 Redis에 저장하고, 모든 구독자에게 푸시 알림을 전송합니다. `@Async` 어노테이션이 `sendNotificationToUser` 메서드에 추가되어 비동기적으로 알림을 전송하며, 오류 로깅이 개선되었습니다.
 *   `com.mytoyappbe.schedule.service.ScheduleService.java`: 크롤링 작업 스케줄의 비즈니스 로직을 처리합니다. 데이터베이스에 스케줄 정보를 저장하고 {@link DynamicScheduler}를 통해 스케줄링 작업을 관리합니다. `getAllSchedules()` 및 `getScheduleById()` 메서드에 `@Cacheable` 어노테이션이 추가되어 Redis를 통한 캐싱을 활용합니다.
-
-*   `com.mytoyappbe.websocket.pubsub.RedisMessagePublisher.java`: `RedisTemplate.convertAndSend()`를 사용하여 특정 Redis 채널에 메시지를 발행하는 서비스입니다.
-*   `com.mytoyappbe.websocket.pubsub.RedisMessageSubscriber.java`: Redis의 `MessageListener`를 구현한 서비스입니다. `RedisConfig`에 등록되어 특정 채널 패턴을 구독하며, 메시지를 수신하면 `WebSocketSessionManager`를 통해 해당 사용자의 로컬 WebSocket 세션으로 메시지를 전달합니다.
 
 *   `com.mytoyappbe.notification.controller.NotificationController.java`: 알림 전송을 위한 REST 컨트롤러입니다. 알림 요청을 수신하는 엔드포인트 (`/api/notifications`)를 노출하고 `NotificationService`를 통해 Kafka에 게시합니다.
 *   `com.mytoyappbe.webpush.controller.WebPushController.java`: 웹 푸시 구독 관리를 위한 REST 컨트롤러입니다. 프론트엔드로부터 `PushSubscriptionDto`를 수신하는 엔드포인트 (`/api/subscribe`)를 노출하고 `WebPushService`를 사용하여 이를 저장합니다.
@@ -295,17 +281,12 @@ npm run dev
 *   **`src/App.tsx`**: 메인 애플리케이션 컴포넌트. 초기 로직이 여러 컴포넌트와 훅으로 분리되었으며, 전역 `userId`를 Zustand 스토어에서 가져와 사용합니다.
 *   **`src/components/SubscribeButton.tsx`**: `App.tsx`에서 분리된 푸시 알림 구독/해지 버튼 컴포넌트.
 *   **`src/components/PushNotificationStatus.tsx`**: `App.tsx`에서 분리된 푸시 알림 상태 표시 컴포넌트.
-*   **`src/components/WebSocketComp.tsx`**: 웹소켓 통신 및 크롤링 진행 상황을 표시하는 컴포넌트. `useWebSocket` 훅과 Zustand `userId`를 활용하도록 리팩토링되었습니다.
+*   **`src/components/CrawlingTable.tsx`**: STOMP over WebSocket 통신 및 크롤링 진행 상황을 표시하는 컴포넌트. `useCrawling` 훅과 `useWebSocketStore`를 활용하도록 리팩토링되었습니다.
 *   **`src/hooks/usePushNotification.ts`**: 푸시 알림 관련 로직을 캡슐화하는 훅. 서버 구독 등록 로직을 포함하며 `userId`를 인자로 받습니다.
 *   **`src/hooks/useServiceWorkerMessages.ts`**: 서비스 워커 메시지 처리를 담당하는 훅. `App.tsx`에서 분리되었습니다.
-*   **`src/hooks/useWebSocket.ts`**: WebSocket 연결, 메시지 송수신, 재연결 로직을 캡슐화하는 훅. `userId`를 내부적으로 가져와 `wsUrl`을 구성합니다.
-*   **`src/store/useUserStore.ts`**: 전역 `userId` 상태를 관리하는 Zustand 스토어.
+*   **`src/store/useWebSocketStore.ts`**: WebSocket 연결, 메시지 송수신, 재연결 로직을 캡슐화하는 Zustand 스토어. `userId`를 내부적으로 가져와 `wsUrl`을 구성합니다.
+*   **`src/store/useAuthStore.ts`**: 전역 `userId` 상태를 관리하는 Zustand 스토어.
 *   **`src/api/httpClient.ts`**: 중앙 집중식 Axios 인스턴스. 모든 API 모듈에서 재사용됩니다.
 *   **`src/api/crawlingApi.ts`**: 크롤링 API 호출 모듈. `httpClient`를 사용하도록 업데이트되었습니다.
 *   **`src/api/pushApi.ts`**: 푸시 알림 API 호출 모듈. `httpClient`를 사용하도록 업데이트되었습니다.
 *   **`src/api/scheduleApi.ts`**: 크롤링 스케줄 API 호출 모듈. `httpClient`를 사용하도록 업데이트되었습니다.
-
-### 기타 주요 패키지
-
-*   `com.mytoyappbe.consumer`: Kafka 메시지를 소비하는 컨슈머를 포함합니다.
-*   `com.mytoyappbe.dto`: 데이터 전송 객체(DTO)를 포함합니다.
