@@ -5,21 +5,19 @@
  *              Spring Batch의 {@link JobLauncher}를 통해 배치 작업을 실행합니다.
  *              예약된 작업의 취소 및 재스케줄링 기능을 제공하여 런타임에 스케줄을 유연하게 제어할 수 있도록 합니다.
  */
-
 package com.mytoyappbe.schedule.service;
 
 import com.mytoyappbe.schedule.entity.Schedule;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecutionException;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.configuration.JobLocator;
 import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.stereotype.Component;
-
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,26 +30,13 @@ import java.util.concurrent.ScheduledFuture;
  *              `JobLauncher`를 통해 Spring Batch 작업을 실행합니다.
  *              예약된 작업의 취소 및 재스케줄링 기능을 제공합니다.
  */
-@Slf4j // 로깅을 위한 Lombok 어노테이션
-@Component // Spring 컨테이너에 빈으로 등록합니다.
+@Slf4j
+@Component
+@RequiredArgsConstructor
 public class ScheduleManager {
 
-    /**
-     * 작업을 예약하고 실행하는 데 사용되는 스레드 풀 기반의 스케줄러입니다.
-     * `ThreadPoolTaskScheduler`는 Spring이 제공하는 유연한 스케줄링 메커니즘입니다.
-     */
     private final ThreadPoolTaskScheduler taskScheduler;
-
-    /**
-     * Spring Batch Job을 실행하는 데 사용되는 런처입니다.
-     * 이 런처를 통해 정의된 `Job`을 `JobParameters`와 함께 실행할 수 있습니다.
-     */
     private final JobLauncher jobLauncher;
-
-    /**
-     * Spring 컨텍스트에 등록된 `Job` 빈을 이름으로 조회하는 데 사용됩니다.
-     * 이를 통해 동적으로 실행할 Job을 찾을 수 있습니다.
-     */
     private final JobLocator jobLocator;
 
     /**
@@ -62,28 +47,12 @@ public class ScheduleManager {
     private final Map<Long, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
 
     /**
-     * @constructor ScheduleManager
-     * @description `ScheduleManager`의 생성자입니다. 필요한 의존성들을 주입받습니다.
-     * @param {ThreadPoolTaskScheduler} taskScheduler - 작업을 예약하는 스케줄러
-     * @param {JobLauncher} jobLauncher - Spring Batch Job을 실행하는 런처
-     * @param {JobLocator} jobLocator - Spring Batch Job을 이름으로 찾는 로케이터
-     */
-    public ScheduleManager(
-            @Qualifier("taskScheduler") ThreadPoolTaskScheduler taskScheduler,
-            JobLauncher jobLauncher,
-            JobLocator jobLocator) {
-        this.taskScheduler = taskScheduler;
-        this.jobLauncher = jobLauncher;
-        this.jobLocator = jobLocator;
-    }
-
-    /**
      * @method scheduleJob
      * @description 새로운 크롤링 작업을 스케줄링합니다.
      *              이전에 동일한 ID로 스케줄링된 작업이 있다면 먼저 취소하고 새로 예약합니다.
      *              작업은 `CronTrigger`에 정의된 Cron 표현식에 따라 주기적으로 실행됩니다.
      *              실행 시 Spring Batch `Job`을 `JobLauncher`를 통해 시작합니다.
-     * @param {Schedule} jobSchedule - 스케줄링할 크롤링 작업 정보 (ID, userId, cronExpression, jobName 등 포함)
+     * @param jobSchedule - 스케줄링할 크롤링 작업 정보 (ID, userId, cronExpression, jobName 등 포함)
      */
     public void scheduleJob(Schedule jobSchedule) {
         // 기존에 스케줄링된 작업이 있다면 취소합니다.
@@ -128,7 +97,7 @@ public class ScheduleManager {
      * @method cancelJob
      * @description 스케줄링된 작업을 취소합니다.
      *              맵에서 해당 `ScheduledFuture`를 찾아 `cancel(true)`를 호출하여 작업을 중단합니다.
-     * @param {Long} jobScheduleId - 취소할 작업의 고유 ID
+     * @param jobScheduleId - 취소할 작업의 고유 ID
      */
     public void cancelJob(Long jobScheduleId) {
         ScheduledFuture<?> scheduledFuture = scheduledTasks.get(jobScheduleId);

@@ -8,7 +8,7 @@
 package com.mytoyappbe.schedule.config;
 
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration; // @Configuration 임포트 추가
+import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 /**
@@ -22,7 +22,7 @@ public class SchedulerConfig {
      * @method taskScheduler
      * @description 동적 스케줄링을 위한 {@link ThreadPoolTaskScheduler} 빈을 생성합니다.
      *              스레드 풀 크기, 스레드 이름 접두사 등을 설정하여 스케줄러의 동작을 정의합니다.
-     * @returns {ThreadPoolTaskScheduler} 설정 및 초기화된 ThreadPoolTaskScheduler 인스턴스
+     * @return 설정 및 초기화된 ThreadPoolTaskScheduler 인스턴스
      */
     @Bean // Spring 컨테이너에 빈으로 등록합니다.
     public ThreadPoolTaskScheduler taskScheduler() {
