@@ -54,9 +54,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         // 인메모리 메시지 브로커를 활성화합니다.
         // `/topic`으로 시작하는 메시지는 모든 구독자에게 브로드캐스트됩니다.
         // `/queue`로 시작하는 메시지는 특정 사용자에게 전송됩니다.
-        registry.enableSimpleBroker("/topic", "/queue")
-                .setHeartbeatValue(new long[] {10000, 10000}) // 클라이언트와 서버 간 하트비트 설정 (밀리초)
-                .setCacheLimit(1024 * 1024); // 브로커가 메시지를 캐시할 수 있는 최대 크기 (바이트)
+        registry.enableSimpleBroker("/topic", "/queue");
 
         // 사용자별 메시지를 보낼 때 사용하는 접두사입니다.
         // `/user/{userId}/queue/messages`와 같은 경로로 메시지를 보낼 수 있습니다.
